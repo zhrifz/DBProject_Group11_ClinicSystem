@@ -10,7 +10,7 @@
 A simple web-based Clinic Appointment System developed using PHP and MySQL.
 The system allows clinic staff to manage doctors, patients, and appointment scheduling.
 
-## 🎯 Project Overview
+**Project Overview:**
 This system helps small clinics manage patient registration, doctor schedules, and appointment booking efficiently.
 
 **Main Features:**
