@@ -10,11 +10,10 @@ if ($_SESSION['role'] != "staff") {
 
 $id = $_GET['id'];
 
-$sql = "DELETE FROM Patient WHERE patientID = $id";
+$sql = "DELETE FROM Doctor WHERE doctorID = $id";
 
 if (mysqli_query($conn, $sql)) {
     header("Location: list.php");
 } else {
-    echo "Error deleting record: " . mysqli_error($conn);
+    echo "Error: " . mysqli_error($conn);
 }
-?>

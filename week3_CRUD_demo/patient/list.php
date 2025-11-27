@@ -1,5 +1,12 @@
 <?php
+
+include "../auth/check_login.php";
 include "../config/db.php";
+
+// only staff can view this
+if ($_SESSION['role'] != "staff") {
+    die("Access denied.");
+}
 
 $sql = "SELECT * FROM Patient";
 $result = mysqli_query($conn, $sql);
@@ -9,6 +16,8 @@ $result = mysqli_query($conn, $sql);
 
 <a href="add.php">Add New Patient</a>
 <br><br>
+
+<a href="../dashboard/staff_dashboard.php">⬅ Back to Dashboard</a>
 
 <table border="1" cellpadding="8">
     <tr>

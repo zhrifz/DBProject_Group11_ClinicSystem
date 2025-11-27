@@ -25,7 +25,7 @@ This system helps small clinics manage patient registration, doctor schedules, a
 - PHP
 - MySQL
 - HTML/CSS
-- Laravel
+- Laragon
 - GitHub
 
 **Project Timeline:**

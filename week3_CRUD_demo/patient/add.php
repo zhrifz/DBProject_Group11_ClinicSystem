@@ -1,5 +1,13 @@
 <?php
+
+include "../auth/check_login.php";
 include "../config/db.php";
+
+// only staff can view this
+if ($_SESSION['role'] != "staff") {
+    die("Access denied.");
+}
+
 
 if (isset($_POST['submit'])) {
 

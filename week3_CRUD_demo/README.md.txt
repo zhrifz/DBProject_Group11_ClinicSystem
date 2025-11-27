@@ -3,18 +3,17 @@ Week 3 – Basic CRUD Implementation
 This week, we completed the basic CRUD (Create, Read, Update, Delete) module for the Patient entity in our Clinic Appointment System project.
 
 Completed
-Patient CRUD
-- list.php — Display all patient records
-- add.php — Add new patient (includes auto age calculation from date of birth)
-- edit.php — Update patient info (auto age recalculation)
-- delete.php — Delete patient record
+1) Patient,Doctor and Appointment CRUD
+- list.php — Display all patient,doctor and appointment records
+- add.php — Add new patient,doctor and appointment 
+- edit.php — Update patient,doctor and appointment info 
+- delete.php — Delete patient,doctor and appointment record
 
-In Progress
-Doctor Module
-- CRUD doctor will be implemented by teammate
+2)Simple Login
+-Login can be done as a staff
+username:zharif
+password:12345
 
-Appointment Module
-- Appointment CRUD will be implemented after doctor and patient modules are fully ready.
 
 Notes
 - Files here only include the main CRUD logic as required for Week 3.
