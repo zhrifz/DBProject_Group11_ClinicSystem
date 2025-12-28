@@ -9,9 +9,9 @@ if ($_SESSION['role'] != "doctor") {
 $doctorID = $_SESSION['id'];
 $today = date("Y-m-d");
 
-// ==========================
-// TOTAL APPOINTMENTS TODAY
-// ==========================
+/* ==========================
+   TOTAL APPOINTMENTS TODAY
+========================== */
 $q_today = mysqli_query($conn, "
     SELECT COUNT(*) AS total_today 
     FROM Appointment 
@@ -20,40 +20,48 @@ $q_today = mysqli_query($conn, "
 ");
 $today_count = mysqli_fetch_assoc($q_today)['total_today'];
 
-// ==========================
-// NEXT UPCOMING APPOINTMENT
-// ==========================
+/* ==========================
+   NEXT UPCOMING APPOINTMENT
+========================== */
 $q_next = mysqli_query($conn, "
-    SELECT Appointment.*, Patient.full_name 
+    SELECT Appointment.appointment_time, Patient.full_name
     FROM Appointment
     JOIN Patient ON Appointment.patientID = Patient.patientID
-    WHERE doctorID = $doctorID
-    AND appointment_time > NOW()
-    ORDER BY appointment_time ASC
+    WHERE Appointment.doctorID = $doctorID
+    AND Appointment.appointment_time > NOW()
+    ORDER BY Appointment.appointment_time ASC
     LIMIT 1
 ");
 $next_appt = mysqli_fetch_assoc($q_next);
 
-// ==========================
-// FETCH APPOINTMENTS FOR CALENDAR
-// ==========================
-$appointments = [];
-$result = mysqli_query($conn, "
-    SELECT Appointment.*, Patient.full_name AS patient_name
+/* ==========================
+   TODAY PATIENT LIST
+========================== */
+$q_today_list = mysqli_query($conn, "
+    SELECT 
+        Appointment.appointmentID,
+        Appointment.appointment_time,
+        Appointment.reason_for_appointment,
+        Patient.full_name
     FROM Appointment
     JOIN Patient ON Appointment.patientID = Patient.patientID
-    WHERE doctorID = $doctorID
+    WHERE Appointment.doctorID = $doctorID
+    AND DATE(Appointment.appointment_time) = '$today'
+    ORDER BY Appointment.appointment_time ASC
 ");
 
-while($row = mysqli_fetch_assoc($result)){
-    $date = date('Y-m-d', strtotime($row['appointment_time']));
-    $time = date('H:i', strtotime($row['appointment_time']));
-    if(!isset($appointments[$date])) $appointments[$date] = [];
-    $appointments[$date][] = [
-        'time' => $time,
-        'patient' => $row['patient_name']
-    ];
-}
+/* ==========================
+   UPCOMING (SIDEBAR PREVIEW)
+========================== */
+$q_upcoming = mysqli_query($conn, "
+    SELECT Appointment.appointment_time, Patient.full_name
+    FROM Appointment
+    JOIN Patient ON Appointment.patientID = Patient.patientID
+    WHERE Appointment.doctorID = $doctorID
+    AND Appointment.appointment_time > NOW()
+    ORDER BY Appointment.appointment_time ASC
+    LIMIT 5
+");
 ?>
 
 <!DOCTYPE html>
@@ -63,97 +71,156 @@ while($row = mysqli_fetch_assoc($result)){
 <title>Doctor Dashboard</title>
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap" rel="stylesheet">
 <script src="https://kit.fontawesome.com/2d3e5b1abc.js" crossorigin="anonymous"></script>
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.css">
-<script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.js"></script>
 
 <style>
 body { margin:0; font-family:Poppins,sans-serif; background:#f3f0ff; display:flex; }
-.sidebar { width:250px; height:100vh; position:fixed; left:0; top:0; background:linear-gradient(180deg,#8ab6ff,#c7a3ff); padding:20px; color:white; }
+
+.sidebar {
+    width:250px; height:100vh; position:fixed;
+    background:linear-gradient(180deg,#8ab6ff,#c7a3ff);
+    padding:20px; color:white; overflow-y:auto;
+}
 .sidebar h2 { text-align:center; margin-bottom:30px; }
-.sidebar a { display:block; padding:12px 15px; border-radius:10px; text-decoration:none; color:white; margin-bottom:10px; transition:0.2s ease; }
-.sidebar a:hover { background: rgba(255,255,255,0.3); transform: translateX(5px); }
+.sidebar a {
+    display:block; padding:12px 15px; border-radius:10px;
+    text-decoration:none; color:white; margin-bottom:10px;
+    transition:0.2s;
+}
+.sidebar a:hover {
+    background: rgba(255,255,255,0.3);
+    transform: translateX(5px);
+}
+
+.upcoming { font-size:13px; margin-top:10px; padding-left:10px; }
+.upcoming p { margin:6px 0; }
 
 .main { margin-left:260px; padding:40px; width:calc(100% - 260px); }
 
-.header { background:white; padding:25px 30px; border-radius:15px; box-shadow:0 3px 12px rgba(0,0,0,0.08); margin-bottom:30px; }
-.header h1 { font-size:26px; font-weight:600; margin:0; }
-.header p { margin-top:5px; color:#555; }
+.header {
+    background:white; padding:25px; border-radius:15px;
+    box-shadow:0 3px 12px rgba(0,0,0,0.08);
+    margin-bottom:30px;
+}
 
-.card { background:white; padding:20px; border-radius:15px; box-shadow:0 4px 12px rgba(0,0,0,0.08); flex:1; min-width:200px; margin-bottom:20px; cursor:pointer; }
-.card h3 { margin-top:0; font-size:16px; color:#333; }
-.card p { font-size:20px; font-weight:600; margin:10px 0 0 0; }
+.flex-container { display:flex; gap:20px; margin-bottom:30px; }
 
-#calendar { background:white; padding:15px; border-radius:15px; box-shadow:0 4px 12px rgba(0,0,0,0.08); margin-top:30px; }
-.app-popup { position: fixed; top:50%; left:50%; transform: translate(-50%, -50%); background:white; padding:15px; border-radius:10px; box-shadow:0 4px 12px rgba(0,0,0,0.2); z-index:9999; max-width: 300px; max-height: 400px; overflow-y: auto; font-size:12px; line-height:1.3; }
-.app-popup button { margin-top:10px; padding:8px 12px; border:none; background:#ff6b6b; color:white; border-radius:6px; cursor:pointer; }
+.card {
+    background:white; padding:20px; border-radius:15px;
+    box-shadow:0 4px 12px rgba(0,0,0,0.08); flex:1;
+}
+.card h3 { margin:0; font-size:16px; }
+.card p { font-size:22px; font-weight:600; margin-top:10px; }
+
+.left {
+    background:white; padding:20px; border-radius:15px;
+    box-shadow:0 4px 12px rgba(0,0,0,0.08);
+}
+
+table { width:100%; border-collapse:collapse; margin-top:15px; }
+th { background:#8ab6ff; color:white; padding:12px; text-align:left; }
+td { padding:10px; border-bottom:1px solid #ddd; }
+tr:hover { background:#f0f6ff; }
+
+.view-btn {
+    background:#7b6dff; color:white;
+    padding:6px 12px; border-radius:8px;
+    text-decoration:none; font-size:13px;
+}
+.view-btn:hover { background:#5e52d5; }
 </style>
 </head>
 
 <body>
+
+<!-- ================= SIDEBAR ================= -->
 <div class="sidebar">
     <h2>Doctor Panel</h2>
-    <a href="doctor_dashboard.php"><i class="fa-solid fa-gauge"></i> Dashboard</a>
 
-    <a href="../../backend/auth/logout.php"><i class="fa-solid fa-right-from-bracket"></i> Logout</a>
+    <a href="doctor_dashboard.php">
+        <i class="fa-solid fa-gauge"></i> Dashboard
+    </a>
+
+    <!-- UPCOMING CLICKABLE -->
+    <a href="doctor_upcoming.php">
+        <i class="fa-solid fa-calendar-days"></i> Upcoming
+    </a>
+
+    <!-- UPCOMING PREVIEW -->
+    <div class="upcoming">
+        <?php while($up = mysqli_fetch_assoc($q_upcoming)) { ?>
+            <p>
+                <?= $up['full_name'] ?><br>
+                <small><?= date('d M, h:i A', strtotime($up['appointment_time'])) ?></small>
+            </p>
+        <?php } ?>
+    </div>
+
+    <a href="../../backend/auth/logout.php">
+        <i class="fa-solid fa-right-from-bracket"></i> Logout
+    </a>
 </div>
 
+<!-- ================= MAIN ================= -->
 <div class="main">
+
     <div class="header">
         <h1>Welcome Dr. <?= $_SESSION['name'] ?></h1>
         <p>Here's a summary of your appointments</p>
     </div>
 
-    <div style="display:flex; gap:20px; flex-wrap:wrap; margin-bottom:30px;">
-        <!-- Clickable card to today_appointments.php -->
-        <a href="today_appointments.php" style="flex:1; min-width:200px; text-decoration:none;">
-            <div class="card" style="background:#7b6dff; color:white;">
-                <h3>Total Appointments Today</h3>
-                <p><?= $today_count ?></p>
-            </div>
-        </a>
+    <div class="flex-container">
+        <div class="card">
+            <h3>Total Appointments Today</h3>
+            <p><?= $today_count ?></p>
+        </div>
 
-        <div class="card" style="background:#ff6b6b; color:white;">
+        <div class="card">
             <h3>Next Appointment</h3>
-            <?php if ($next_appt) { ?>
+            <?php if($next_appt){ ?>
                 <p><?= $next_appt['full_name'] ?></p>
-                <p><?= date("d M Y, h:i A", strtotime($next_appt['appointment_time'])) ?></p>
+                <small><?= date('d M Y, h:i A', strtotime($next_appt['appointment_time'])) ?></small>
             <?php } else { ?>
-                <p>No upcoming appointments</p>
+                <p>No upcoming</p>
             <?php } ?>
         </div>
     </div>
 
-    <!-- Full Calendar -->
-    <div id="calendar"></div>
+    <div class="left">
+        <h3>Today's Patients</h3>
+
+        <?php if(mysqli_num_rows($q_today_list)==0){ ?>
+            <p>No appointments today.</p>
+        <?php } else { ?>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>Patient Name</th>
+                    <th>Condition</th>
+                    <th>Time</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody>
+            <?php while($row=mysqli_fetch_assoc($q_today_list)){ ?>
+                <tr>
+                    <td><?= $row['full_name'] ?></td>
+                    <td><?= $row['reason_for_appointment'] ?></td>
+                    <td><?= date('h:i A', strtotime($row['appointment_time'])) ?></td>
+                    <td>
+                        <a class="view-btn"
+                           href="view_patient.php?id=<?= $row['appointmentID'] ?>">
+                           View
+                        </a>
+                    </td>
+                </tr>
+            <?php } ?>
+            </tbody>
+        </table>
+
+        <?php } ?>
+    </div>
+
 </div>
-
-<script>
-var appointments = <?php echo json_encode($appointments); ?>;
-
-document.addEventListener('DOMContentLoaded', function() {
-    var calendarEl = document.getElementById('calendar');
-    var calendar = new FullCalendar.Calendar(calendarEl, {
-        initialView: 'dayGridMonth',
-        height: 'auto',
-        events: Object.keys(appointments).map(date => ({
-            title: appointments[date].length + ' Appointment(s)',
-            start: date,
-            allDay: true,
-            backgroundColor: '#7b6dff',
-            borderColor: '#5e52d5'
-        })),
-        eventClick: function(info) {
-            var date = info.event.startStr;
-            var details = appointments[date].map(a => `${a.time} - ${a.patient}`).join('<br>');
-            var popup = document.createElement('div');
-            popup.classList.add('app-popup');
-            popup.innerHTML = details + `<br><button onclick="this.parentElement.remove()">Close</button>`;
-            document.body.appendChild(popup);
-        }
-    });
-    calendar.render();
-});
-</script>
-
 </body>
 </html>

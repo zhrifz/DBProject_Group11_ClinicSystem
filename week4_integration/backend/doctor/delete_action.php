@@ -1,55 +1,44 @@
 <?php
-session_start();
 
 include "../../auth/check_login.php";
 include "../../config/db.php";
 
-// only staff can delete doctors
+// Only staff can delete doctors
 if (!isset($_SESSION['role']) || $_SESSION['role'] !== "staff") {
     http_response_code(403);
     exit("Access denied.");
 }
 
-// must be POST
-if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-    header("Location: ../../frontend/doctor/list.php");
-    exit;
-}
-
-// CSRF token check
-if (!isset($_POST['csrf_token'], $_SESSION['csrf_token']) ||
-    $_POST['csrf_token'] !== $_SESSION['csrf_token']) {
-    $_SESSION['error'] = "Invalid request.";
-    header("Location: ../../frontend/doctor/list.php");
-    exit;
-}
-
-// validate id
-$id = $_POST['id'] ?? '';
+// Get doctor ID from GET
+$id = $_GET['id'] ?? '';
 if (!ctype_digit($id)) {
-    $_SESSION['error'] = "Invalid doctor.";
-    header("Location: ../../frontend/doctor/list.php");
+    echo "<script>alert('Invalid doctor!'); window.location.href='../../frontend/doctor/list.php';</script>";
     exit;
 }
 
-// delete using prepared statement
-$sql = "DELETE FROM Doctor WHERE doctorID = ?";
-$stmt = mysqli_prepare($conn, $sql);
+// --- Delete all appointments of the doctor first ---
+$sqlDeleteAppointments = "DELETE FROM appointment WHERE doctorID = ?";
+$stmtApp = mysqli_prepare($conn, $sqlDeleteAppointments);
+mysqli_stmt_bind_param($stmtApp, "i", $id);
+mysqli_stmt_execute($stmtApp);
+mysqli_stmt_close($stmtApp);
 
-if (!$stmt) {
-    $_SESSION['error'] = "Something went wrong.";
-    header("Location: ../../frontend/doctor/list.php");
+// --- Delete the doctor ---
+$sqlDeleteDoctor = "DELETE FROM doctor WHERE doctorID = ?";
+$stmtDoc = mysqli_prepare($conn, $sqlDeleteDoctor);
+mysqli_stmt_bind_param($stmtDoc, "i", $id);
+
+if (mysqli_stmt_execute($stmtDoc)) {
+    echo "<script>
+        alert('Doctor and their appointments deleted successfully!');
+        window.location.href='../../frontend/doctor/list.php';
+    </script>";
+    exit;
+} else {
+    echo "<script>
+        alert('Unable to delete doctor!');
+        window.location.href='../../frontend/doctor/list.php';
+    </script>";
     exit;
 }
-
-mysqli_stmt_bind_param($stmt, "i", $id);
-
-if (mysqli_stmt_execute($stmt)) {
-    $_SESSION['success'] = "Doctor deleted.";
-    header("Location: ../../frontend/doctor/list.php");
-    exit;
-}
-
-$_SESSION['error'] = "Unable to delete doctor.";
-header("Location: ../../frontend/doctor/list.php");
-exit;
+?>
