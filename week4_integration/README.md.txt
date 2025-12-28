@@ -27,6 +27,10 @@ This is a web-based Doctor Appointment Management System designed to help a **cl
 - **Username:** zharif  
 - **Password:** 12345  
 
+### Example Doctor Account for Testing
+- **Username:** doctor 
+- **Password:** doctor  
+
 > Note: Only staff can log in using this account. Doctor accounts have their own credentials.
 
 ## Installation
